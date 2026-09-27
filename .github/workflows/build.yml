@@ -27,7 +27,7 @@ jobs:
       - name: Initialize Flutter Project
         run: |
           if [ ! -f "pubspec.yaml" ]; then
-            flutter create --org com.voice.app .
+            flutter create --project-name voice_app --org com.voice.app .
           fi
 
       - name: Build APK
@@ -38,4 +38,3 @@ jobs:
         with:
           name: VoiceApp-Release
           path: build/app/outputs/flutter-apk/app-release.apk
-          
