@@ -30,9 +30,9 @@ jobs:
           flutter create --org com.voice.app --project-name voice_app .
           flutter pub add zego_uikit_prebuilt_live_audio_room
           cat << 'EOF' > setup.py
-          import os
+          import os, inspect
 
-          # 1. استبدال مستودع jcenter() القديم بمستودع mavenCentral() المعتمد
+          # 1. استبدال مستودع jcenter بـ mavenCentral المعتمد
           pub_cache = os.path.expanduser("~/.pub-cache")
           for search_dir in [pub_cache, "android"]:
               if os.path.exists(search_dir):
@@ -45,11 +45,11 @@ jobs:
                                       c = f.read()
                                   if "jcenter()" in c:
                                       with open(fp, "w", encoding="utf-8") as f:
-                                        f.write(c.replace("jcenter()", "mavenCentral()"))
+                                          f.write(c.replace("jcenter()", "mavenCentral()"))
                               except Exception:
                                   pass
 
-          # 2. حل مشكلة تعريف المكتبة com.android.library
+          # 2. إضافة com.android.library إلى settings.gradle
           for s_path in ["android/settings.gradle", "android/settings.gradle.kts"]:
               if os.path.exists(s_path):
                   with open(s_path, "r") as f:
@@ -64,7 +64,7 @@ jobs:
                       with open(s_path, "w") as f:
                           f.write("\n".join(new_lines) + "\n")
 
-          # 3. ضبط compileSdk إلى 36 و minSdk إلى 21 لتوافق الحزم بالكامل
+          # 3. ضبط compileSdk 36 و minSdk 21 للتوافق الشامل
           for p in ["android/app/build.gradle", "android/app/build.gradle.kts"]:
               if os.path.exists(p):
                   with open(p, "r") as f:
@@ -97,12 +97,12 @@ jobs:
                   with open(manifest_path, "w") as f:
                       f.write(data)
 
-          # 5. قواعد الحماية
+          # 5. قواعد الحماية Proguard
           os.makedirs("android/app", exist_ok=True)
           with open("android/app/proguard-rules.pro", "a") as f:
               f.write("\n-keep class **.zego.** { *; }\n-keep class **.**.zego_zpns.** { *; }\n")
 
-          # 6. خصائص AndroidX
+          # 6. خصائص الأندرويد
           gp_path = "android/gradle.properties"
           if os.path.exists(gp_path):
               with open(gp_path, "r") as f:
@@ -120,6 +120,139 @@ jobs:
                   gp += f"\n{flg}\n"
           with open(gp_path, "w") as f:
               f.write(gp)
+
+          # 7. كتابة كود التطبيق الصافي تلقائياً لضمان عدم وجود أي سطر خاطئ
+          os.makedirs("lib", exist_ok=True)
+          dart_code = """
+          import 'package:flutter/material.dart';
+          import 'package:zego_uikit_prebuilt_live_audio_room/zego_uikit_prebuilt_live_audio_room.dart';
+
+          void main() {
+            WidgetsFlutterBinding.ensureInitialized();
+            runApp(const MyApp());
+          }
+
+          class MyApp extends StatelessWidget {
+            const MyApp({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return const MaterialApp(
+                debugShowCheckedModeBanner: false,
+                home: HomePage(),
+              );
+            }
+          }
+
+          class HomePage extends StatefulWidget {
+            const HomePage({super.key});
+
+            @override
+            State<HomePage> createState() => _HomePageState();
+          }
+
+          class _HomePageState extends State<HomePage> {
+            final roomIDController = TextEditingController(text: "room_101");
+            final userID = "user_100";
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Voice App'),
+                  centerTitle: true,
+                ),
+                body: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextField(
+                          controller: roomIDController,
+                          decoration: const InputDecoration(
+                            labelText: 'Room ID',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(50),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => LiveAudioRoomPage(
+                                  roomID: roomIDController.text.trim(),
+                                  isHost: true,
+                                  userID: userID,
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Create Room (Host)', style: TextStyle(fontSize: 18)),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(50),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => LiveAudioRoomPage(
+                                  roomID: roomIDController.text.trim(),
+                                  isHost: false,
+                                  userID: userID,
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Join Room (Audience)', style: TextStyle(fontSize: 18)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+
+          class LiveAudioRoomPage extends StatelessWidget {
+            final String roomID;
+            final bool isHost;
+            final String userID;
+
+            const LiveAudioRoomPage({
+              super.key,
+              required this.roomID,
+              required this.isHost,
+              required this.userID,
+            });
+
+            @override
+            Widget build(BuildContext context) {
+              return SafeArea(
+                child: ZegoUIKitPrebuiltLiveAudioRoom(
+                  appID: 123456789,
+                  appSign: '0000000000000000000000000000000000000000000000000000000000000000',
+                  userID: userID,
+                  userName: 'user_$userID',
+                  roomID: roomID,
+                  config: isHost
+                      ? ZegoUIKitPrebuiltLiveAudioRoomConfig.host()
+                      : ZegoUIKitPrebuiltLiveAudioRoomConfig.audience(),
+                ),
+              );
+            }
+          }
+          """
+          with open("lib/main.dart", "w", encoding="utf-8") as f:
+              f.write(inspect.cleandoc(dart_code))
+          print("All configurations and lib/main.dart generated perfectly!")
           EOF
           python3 setup.py
 
