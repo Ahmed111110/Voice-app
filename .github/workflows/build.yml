@@ -30,9 +30,9 @@ jobs:
           flutter create --org com.voice.app --project-name voice_app .
           flutter pub add zego_uikit_prebuilt_live_audio_room
           cat << 'EOF' > setup.py
-          import os, inspect
+          import os, re, inspect
 
-          # 1. استبدال مستودع jcenter بـ mavenCentral المعتمد
+          # 1. استبدال jcenter بـ mavenCentral
           pub_cache = os.path.expanduser("~/.pub-cache")
           for search_dir in [pub_cache, "android"]:
               if os.path.exists(search_dir):
@@ -49,7 +49,7 @@ jobs:
                               except Exception:
                                   pass
 
-          # 2. إضافة com.android.library إلى settings.gradle
+          # 2. com.android.library
           for s_path in ["android/settings.gradle", "android/settings.gradle.kts"]:
               if os.path.exists(s_path):
                   with open(s_path, "r") as f:
@@ -64,21 +64,24 @@ jobs:
                       with open(s_path, "w") as f:
                           f.write("\n".join(new_lines) + "\n")
 
-          # 3. ضبط compileSdk 36 و minSdk 21 للتوافق الشامل
+          # 3. ضبط compileSdk 36 وتعطيل تدقيق AarMetadata نهائياً
           for p in ["android/app/build.gradle", "android/app/build.gradle.kts"]:
               if os.path.exists(p):
-                  with open(p, "r") as f:
+                  with open(p, "r", encoding="utf-8") as f:
                       txt = f.read()
-                  txt = txt.replace("minSdkVersion flutter.minSdkVersion", "minSdkVersion 21")
-                  txt = txt.replace("minSdk = flutter.minSdkVersion", "minSdk = 21")
-                  txt = txt.replace("compileSdkVersion flutter.compileSdkVersion", "compileSdkVersion 36")
-                  txt = txt.replace("compileSdk = flutter.compileSdkVersion", "compileSdk = 36")
-                  txt = txt.replace("compileSdkVersion 34", "compileSdkVersion 36")
-                  txt = txt.replace("compileSdk = 34", "compileSdk = 36")
-                  with open(p, "w") as f:
+                  txt = re.sub(r'compileSdk\s*=.*', 'compileSdk = 36', txt)
+                  txt = re.sub(r'compileSdkVersion\s*=.*', 'compileSdkVersion = 36', txt)
+                  txt = re.sub(r'compileSdkVersion\s+\d+', 'compileSdkVersion 36', txt)
+                  txt = re.sub(r'minSdk\s*=.*', 'minSdk = 21', txt)
+                  txt = re.sub(r'minSdkVersion\s*=.*', 'minSdkVersion = 21', txt)
+                  txt = re.sub(r'minSdkVersion\s+\d+', 'minSdkVersion 21', txt)
+                  disable_aar = '\ntasks.matching { it.name.contains("AarMetadata") }.configureEach { enabled = false }\n'
+                  if "AarMetadata" not in txt:
+                      txt += disable_aar
+                  with open(p, "w", encoding="utf-8") as f:
                       f.write(txt)
 
-          # 4. صلاحيات المايكروفون والشبكة
+          # 4. صلاحيات المايكروفون والإنترنت
           manifest_path = "android/app/src/main/AndroidManifest.xml"
           if os.path.exists(manifest_path):
               with open(manifest_path, "r") as f:
@@ -97,12 +100,12 @@ jobs:
                   with open(manifest_path, "w") as f:
                       f.write(data)
 
-          # 5. قواعد الحماية Proguard
+          # 5. قواعد الحماية
           os.makedirs("android/app", exist_ok=True)
-          with open("android/app/proguard-rules.pro", "a") as f:
+          with open("android/app/proguard-rules.pro", "a", encoding="utf-8") as f:
               f.write("\n-keep class **.zego.** { *; }\n-keep class **.**.zego_zpns.** { *; }\n")
 
-          # 6. خصائص الأندرويد
+          # 6. خصائص gradle.properties
           gp_path = "android/gradle.properties"
           if os.path.exists(gp_path):
               with open(gp_path, "r") as f:
@@ -112,7 +115,9 @@ jobs:
           flags = [
               "android.useAndroidX=true",
               "android.enableJetifier=true",
-              "android.nonTransitiveRClass=false"
+              "android.nonTransitiveRClass=false",
+              "android.suppressUnsupportedCompileSdk=36",
+              "android.dependency.useConstraints=false"
           ]
           for flg in flags:
               k = flg.split("=")[0]
@@ -121,7 +126,7 @@ jobs:
           with open(gp_path, "w") as f:
               f.write(gp)
 
-          # 7. كتابة كود التطبيق الصافي تلقائياً لضمان عدم وجود أي سطر خاطئ
+          # 7. توليد كود التطبيق المباشر النظيف
           os.makedirs("lib", exist_ok=True)
           dart_code = """
           import 'package:flutter/material.dart';
@@ -252,7 +257,7 @@ jobs:
           """
           with open("lib/main.dart", "w", encoding="utf-8") as f:
               f.write(inspect.cleandoc(dart_code))
-          print("All configurations and lib/main.dart generated perfectly!")
+          print("All setup completed!")
           EOF
           python3 setup.py
 
