@@ -1,187 +1,77 @@
-import 'dart:math';
-import 'package:flutter/material.dart';
-import 'package:zego_uikit_prebuilt_live_audio_room/zego_uikit_prebuilt_live_audio_room.dart';
+name: Build Voice App APK
 
-void main() {
-  runApp(const VoiceApp());
-}
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
 
-class VoiceApp extends StatelessWidget {
-  const VoiceApp({super.key});
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Voice App',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0F0C20),
-      ),
-      home: const HomeScreen(),
-    );
-  }
-}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
 
-class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _roomIdController = TextEditingController(text: '100');
-  final TextEditingController _userNameController = TextEditingController(text: 'أنس');
-  bool isHost = true;
-  final String userId = Random().nextInt(1000000).toString();
+      - name: Configure Flutter and ZEGOCLOUD
+        run: |
+          flutter create --org com.voice.app --project-name voice_app .
+          flutter pub add zego_uikit_prebuilt_live_audio_room
+          cat << 'EOF' > setup.py
+          import os
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('الغرف الصوتية الحية', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.deepPurpleAccent.withOpacity(0.15),
-              ),
-              child: const Icon(Icons.record_voice_over, size: 70, color: Colors.deepPurpleAccent),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'سهرة الأصدقاء الصوتية',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'صوت مباشر بتقنية ZEGOCLOUD وبدون تأخير',
-              style: TextStyle(fontSize: 13, color: Colors.white54),
-            ),
-            const SizedBox(height: 32),
-            TextField(
-              controller: _userNameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'اسمك المستعار',
-                labelStyle: const TextStyle(color: Colors.white70),
-                prefixIcon: const Icon(Icons.person, color: Colors.deepPurpleAccent),
-                filled: true,
-                fillColor: const Color(0xFF1E1B38),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _roomIdController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'رقم الغرفة (Room ID)',
-                labelStyle: const TextStyle(color: Colors.white70),
-                prefixIcon: const Icon(Icons.meeting_room, color: Colors.deepPurpleAccent),
-                filled: true,
-                fillColor: const Color(0xFF1E1B38),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isHost ? Colors.deepPurpleAccent : const Color(0xFF1E1B38),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => setState(() => isHost = true),
-                    child: Text('صاحب الغرفة (Host)', style: TextStyle(color: isHost ? Colors.white : Colors.white60, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: !isHost ? Colors.deepPurpleAccent : const Color(0xFF1E1B38),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => setState(() => isHost = false),
-                    child: Text('ضيف / مستمع', style: TextStyle(color: !isHost ? Colors.white : Colors.white60, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 36),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurpleAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () {
-                  if (_roomIdController.text.trim().isEmpty || _userNameController.text.trim().isEmpty) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LiveAudioRoomPage(
-                        roomID: _roomIdController.text.trim(),
-                        isHost: isHost,
-                        userId: userId,
-                        userName: _userNameController.text.trim(),
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('دخول الغرفة الآن 🎙️', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+          manifest_path = "android/app/src/main/AndroidManifest.xml"
+          if os.path.exists(manifest_path):
+              with open(manifest_path, "r") as f:
+                  data = f.read()
+              perms = """
+              <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.BLUETOOTH" />
+              <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
+              """
+              if "RECORD_AUDIO" not in data:
+                  data = data.replace("<application", perms + "\n    <application")
+                  with open(manifest_path, "w") as f:
+                      f.write(data)
 
-class LiveAudioRoomPage extends StatelessWidget {
-  final String roomID;
-  final bool isHost;
-  final String userId;
-  final String userName;
+          for p in ["android/app/build.gradle", "android/app/build.gradle.kts"]:
+              if os.path.exists(p):
+                  with open(p, "r") as f:
+                      txt = f.read()
+                  txt = txt.replace("minSdkVersion flutter.minSdkVersion", "minSdkVersion 21")
+                  txt = txt.replace("minSdk = flutter.minSdkVersion", "minSdk = 21")
+                  txt = txt.replace("compileSdkVersion flutter.compileSdkVersion", "compileSdkVersion 34")
+                  txt = txt.replace("compileSdk = flutter.compileSdkVersion", "compileSdk = 34")
+                  with open(p, "w") as f:
+                      f.write(txt)
 
-  const LiveAudioRoomPage({
-    super.key,
-    required this.roomID,
-    required this.isHost,
-    required this.userId,
-    required this.userName,
-  });
+          os.makedirs("android/app", exist_ok=True)
+          with open("android/app/proguard-rules.pro", "a") as f:
+              f.write("\n-keep class **.zego.** { *; }\n-keep class **.**.zego_zpns.** { *; }\n")
+          EOF
+          python3 setup.py
 
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: ZegoUIKitPrebuiltLiveAudioRoom(
-        appID: 519145504,
-        appSign: '4492c846daf92639ffdf76e508d550396adb95793a662ce6ee32f8249f96a38b',
-        userID: userId,
-        userName: userName,
-        roomID: roomID,
-        config: (isHost
-            ? ZegoUIKitPrebuiltLiveAudioRoomConfig.host()
-            : ZegoUIKitPrebuiltLiveAudioRoomConfig.audience()),
-      ),
-    );
-  }
-}
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceApp-Release
+          path: build/app/outputs/flutter-apk/app-release.apk
