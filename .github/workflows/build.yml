@@ -27,7 +27,7 @@ jobs:
 
       - name: Configure Flutter and ZEGOCLOUD
         run: |
-          flutter create --org com.voice.app .
+          flutter create --org com.voice.app --project-name voice_app .
           flutter pub add zego_uikit_prebuilt_live_audio_room
           cat << 'EOF' > setup.py
           import os
