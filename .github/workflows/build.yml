@@ -32,7 +32,24 @@ jobs:
           cat << 'EOF' > setup.py
           import os
 
-          # 1. حل مكتبة zego_zim
+          # 1. استبدال مستودع jcenter() القديم بمستودع mavenCentral() المعتمد
+          pub_cache = os.path.expanduser("~/.pub-cache")
+          for search_dir in [pub_cache, "android"]:
+              if os.path.exists(search_dir):
+                  for root, _, files in os.walk(search_dir):
+                      for file in files:
+                          if file.endswith((".gradle", ".kts")):
+                              fp = os.path.join(root, file)
+                              try:
+                                  with open(fp, "r", encoding="utf-8") as f:
+                                      c = f.read()
+                                  if "jcenter()" in c:
+                                      with open(fp, "w", encoding="utf-8") as f:
+                                        f.write(c.replace("jcenter()", "mavenCentral()"))
+                              except Exception:
+                                  pass
+
+          # 2. حل مشكلة تعريف المكتبة com.android.library
           for s_path in ["android/settings.gradle", "android/settings.gradle.kts"]:
               if os.path.exists(s_path):
                   with open(s_path, "r") as f:
@@ -47,7 +64,21 @@ jobs:
                       with open(s_path, "w") as f:
                           f.write("\n".join(new_lines) + "\n")
 
-          # 2. أذونات المايك والشبكة
+          # 3. ضبط compileSdk إلى 36 و minSdk إلى 21 لتوافق الحزم بالكامل
+          for p in ["android/app/build.gradle", "android/app/build.gradle.kts"]:
+              if os.path.exists(p):
+                  with open(p, "r") as f:
+                      txt = f.read()
+                  txt = txt.replace("minSdkVersion flutter.minSdkVersion", "minSdkVersion 21")
+                  txt = txt.replace("minSdk = flutter.minSdkVersion", "minSdk = 21")
+                  txt = txt.replace("compileSdkVersion flutter.compileSdkVersion", "compileSdkVersion 36")
+                  txt = txt.replace("compileSdk = flutter.compileSdkVersion", "compileSdk = 36")
+                  txt = txt.replace("compileSdkVersion 34", "compileSdkVersion 36")
+                  txt = txt.replace("compileSdk = 34", "compileSdk = 36")
+                  with open(p, "w") as f:
+                      f.write(txt)
+
+          # 4. صلاحيات المايكروفون والشبكة
           manifest_path = "android/app/src/main/AndroidManifest.xml"
           if os.path.exists(manifest_path):
               with open(manifest_path, "r") as f:
@@ -66,45 +97,27 @@ jobs:
                   with open(manifest_path, "w") as f:
                       f.write(data)
 
-          # 3. إعدادات إصدار أندرويد
-          for p in ["android/app/build.gradle", "android/app/build.gradle.kts"]:
-              if os.path.exists(p):
-                  with open(p, "r") as f:
-                      txt = f.read()
-                  txt = txt.replace("minSdkVersion flutter.minSdkVersion", "minSdkVersion 21")
-                  txt = txt.replace("minSdk = flutter.minSdkVersion", "minSdk = 21")
-                  txt = txt.replace("compileSdkVersion flutter.compileSdkVersion", "compileSdkVersion 34")
-                  txt = txt.replace("compileSdk = flutter.compileSdkVersion", "compileSdk = 34")
-                  with open(p, "w") as f:
-                      f.write(txt)
-
-          # 4. قواعد الحماية
+          # 5. قواعد الحماية
           os.makedirs("android/app", exist_ok=True)
           with open("android/app/proguard-rules.pro", "a") as f:
               f.write("\n-keep class **.zego.** { *; }\n-keep class **.**.zego_zpns.** { *; }\n")
 
-          # 5. إيقاف newDsl و builtInKotlin وتفعيل التوافق الكامل كما طلبت رسالة الخطأ
+          # 6. خصائص AndroidX
           gp_path = "android/gradle.properties"
           if os.path.exists(gp_path):
               with open(gp_path, "r") as f:
                   gp = f.read()
           else:
               gp = ""
-
           flags = [
               "android.useAndroidX=true",
               "android.enableJetifier=true",
-              "android.nonTransitiveRClass=false",
-              "android.newDsl=false",
-              "android.builtInKotlin=false"
+              "android.nonTransitiveRClass=false"
           ]
           for flg in flags:
               k = flg.split("=")[0]
-              if k in gp:
-                  gp = "\n".join([flg if l.startswith(k + "=") else l for l in gp.splitlines()])
-              else:
+              if k not in gp:
                   gp += f"\n{flg}\n"
-
           with open(gp_path, "w") as f:
               f.write(gp)
           EOF
