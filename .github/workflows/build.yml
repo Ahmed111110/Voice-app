@@ -25,14 +25,32 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Install Android SDK 36
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" || true
+
       - name: Configure Flutter and ZEGOCLOUD
         run: |
           flutter create --org com.voice.app --project-name voice_app .
           flutter pub add zego_uikit_prebuilt_live_audio_room
+          
+          # تعطيل فحص AarMetadata عالمياً في محرك Gradle
+          mkdir -p ~/.gradle
+          cat << 'EOF' > ~/.gradle/init.gradle
+          allprojects {
+              tasks.whenTaskAdded { task ->
+                  if (task.name.contains("AarMetadata")) {
+                      task.enabled = false
+                  }
+              }
+          }
+          EOF
+
           cat << 'EOF' > setup.py
           import os, inspect
 
-          # 1. استبدال مستودع jcenter بـ mavenCentral المعتمد
+          # 1. استبدال مستودع jcenter بـ mavenCentral
           pub_cache = os.path.expanduser("~/.pub-cache")
           for search_dir in [pub_cache, "android"]:
               if os.path.exists(search_dir):
@@ -64,7 +82,7 @@ jobs:
                       with open(s_path, "w") as f:
                           f.write("\n".join(new_lines) + "\n")
 
-          # 3. تعديل مباشر لـ compileSdk 35 و minSdk 21 في ملفات الجرادل سطر بسطر
+          # 3. ضبط compileSdk 36 و minSdk 21 في ملفات build.gradle
           for p in ["android/app/build.gradle", "android/app/build.gradle.kts"]:
               if os.path.exists(p):
                   with open(p, "r", encoding="utf-8") as f:
@@ -72,7 +90,7 @@ jobs:
                   new_lines = []
                   for line in lines:
                       if "compileSdk" in line:
-                          new_lines.append("    compileSdk = 35\n")
+                          new_lines.append("    compileSdk = 36\n")
                       elif "minSdk" in line:
                           new_lines.append("    minSdk = 21\n")
                       else:
@@ -82,7 +100,7 @@ jobs:
 
           # 4. حقن القيم داخل local.properties لضمان قراءة فلاتر لها
           lp_path = "android/local.properties"
-          lp_content = "flutter.compileSdkVersion=35\nflutter.minSdkVersion=21\nflutter.targetSdkVersion=35\n"
+          lp_content = "flutter.compileSdkVersion=36\nflutter.minSdkVersion=21\nflutter.targetSdkVersion=36\n"
           if os.path.exists(lp_path):
               with open(lp_path, "a", encoding="utf-8") as f:
                   f.write("\n" + lp_content)
@@ -125,13 +143,13 @@ jobs:
               "android.useAndroidX=true",
               "android.enableJetifier=true",
               "android.nonTransitiveRClass=false",
-              "android.suppressUnsupportedCompileSdk=35"
+              "android.suppressUnsupportedCompileSdk=36"
           ]
           for flg in flags:
               k = flg.split("=")[0]
               if k not in gp:
                   gp += f"\n{flg}\n"
-          with open(gp_path, "w") as f:
+          with open(gp_path, "w", encoding="utf-8") as f:
               f.write(gp)
 
           # 8. توليد ملف lib/main.dart نظيف بالكامل
