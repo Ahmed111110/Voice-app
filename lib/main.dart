@@ -1,282 +1,186 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:zego_uikit_prebuilt_live_audio_room/zego_uikit_prebuilt_live_audio_room.dart';
 
 void main() {
-  runApp(const VoiceRoomApp());
+  runApp(const VoiceApp());
 }
 
-class VoiceRoomApp extends StatelessWidget {
-  const VoiceRoomApp({super.key});
+class VoiceApp extends StatelessWidget {
+  const VoiceApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Voice Room',
+      title: 'Voice App',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0F0C20),
       ),
-      home: const LiveAudioRoomScreen(),
+      home: const HomeScreen(),
     );
   }
 }
 
-class LiveAudioRoomScreen extends StatefulWidget {
-  const LiveAudioRoomScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<LiveAudioRoomScreen> createState() => _LiveAudioRoomScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _LiveAudioRoomScreenState extends State<LiveAudioRoomScreen> {
-  bool isMuted = false;
-  int? activeMicIndex = 0; // مقعد المضيف نشط افتراضياً
-
-  final List<String> messages = [
-    'النظام: مرحباً بكم في الغرفة الصوتية 🎉',
-    'أنس: السلام عليكم جميعاً، منورين الروم!',
-  ];
-  final TextEditingController _msgController = TextEditingController();
-
-  void _sendMessage() {
-    if (_msgController.text.trim().isNotEmpty) {
-      setState(() {
-        messages.add('أنا: ${_msgController.text.trim()}');
-        _msgController.clear();
-      });
-    }
-  }
-
-  void _showGiftSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E1B38),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          height: 280,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'إرسال هدية 🎁',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 4,
-                  children: [
-                    _buildGiftItem('🌹', 'وردة', '10'),
-                    _buildGiftItem('👑', 'تاج فخم', '500'),
-                    _buildGiftItem('🚀', 'صاروخ', '1000'),
-                    _buildGiftItem('🏎️', 'سيارة رياضية', '2500'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildGiftItem(String emoji, String name, String price) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Text(emoji, style: const TextStyle(fontSize: 28)),
-        ),
-        const SizedBox(height: 4),
-        Text(name, style: const TextStyle(fontSize: 12, color: Colors.white70)),
-        Text('$price 🪙', style: const TextStyle(fontSize: 10, color: Colors.amberAccent)),
-      ],
-    );
-  }
+class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _roomIdController = TextEditingController(text: '100');
+  final TextEditingController _userNameController = TextEditingController(text: 'أنس');
+  bool isHost = true;
+  final String userId = Random().nextInt(1000000).toString();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('الغرف الصوتية الحية', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text('سهرة الأصدقاء ✨', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Text('ID: 882910 • 14 مستمع', style: TextStyle(fontSize: 12, color: Colors.white54)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app, color: Colors.redAccent),
-            onPressed: () {},
-          ),
-        ],
       ),
-      body: Column(
-        children: [
-          // شبكة المقاعد الصوتية (8 مقاعد)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.8,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.deepPurpleAccent.withOpacity(0.15),
               ),
-              itemCount: 8,
-              itemBuilder: (context, index) {
-                final bool isTaken = (index == 0); // مقعد المضيف محجوز
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      activeMicIndex = index;
-                    });
-                  },
-                  child: Column(
-                    children: [
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundColor: isTaken ? Colors.deepPurpleAccent : Colors.white.withOpacity(0.08),
-                            child: isTaken
-                                ? const Icon(Icons.person, size: 34, color: Colors.white)
-                                : const Icon(Icons.mic_none, size: 28, color: Colors.white38),
-                          ),
-                          if (isTaken)
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: CircleAvatar(
-                                radius: 10,
-                                backgroundColor: isMuted ? Colors.red : Colors.green,
-                                child: Icon(
-                                  isMuted ? Icons.mic_off : Icons.mic,
-                                  size: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        isTaken ? 'المضيف' : 'مقعد ${index + 1}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isTaken ? Colors.white : Colors.white54,
-                          fontWeight: isTaken ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              child: const Icon(Icons.record_voice_over, size: 70, color: Colors.deepPurpleAccent),
             ),
-          ),
-
-          const Spacer(),
-
-          // منطقة الشات النصي التفاعلي
-          Container(
-            height: 180,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ListView.builder(
-              reverse: true,
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final msg = messages[messages.length - 1 - index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.35),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(msg, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                  ),
-                );
-              },
+            const SizedBox(height: 24),
+            const Text(
+              'سهرة الأصدقاء الصوتية',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-          ),
-
-          // شريط التحكم السفلي
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: const Color(0xFF16132D),
-            child: Row(
+            const SizedBox(height: 8),
+            const Text(
+              'صوت مباشر بتقنية ZEGOCLOUD وبدون تأخير',
+              style: TextStyle(fontSize: 13, color: Colors.white54),
+            ),
+            const SizedBox(height: 32),
+            TextField(
+              controller: _userNameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'اسمك المستعار',
+                labelStyle: const TextStyle(color: Colors.white70),
+                prefixIcon: const Icon(Icons.person, color: Colors.deepPurpleAccent),
+                filled: true,
+                fillColor: const Color(0xFF1E1B38),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _roomIdController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'رقم الغرفة (Room ID)',
+                labelStyle: const TextStyle(color: Colors.white70),
+                prefixIcon: const Icon(Icons.meeting_room, color: Colors.deepPurpleAccent),
+                filled: true,
+                fillColor: const Color(0xFF1E1B38),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
               children: [
                 Expanded(
-                  child: Container(
-                    height: 42,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(20),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isHost ? Colors.deepPurpleAccent : const Color(0xFF1E1B38),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _msgController,
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            decoration: const InputDecoration(
-                              hintText: 'اكتب رسالة...',
-                              hintStyle: TextStyle(color: Colors.white38, fontSize: 13),
-                              border: InputBorder.none,
-                            ),
-                            onSubmitted: (_) => _sendMessage(),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.send, size: 18, color: Colors.deepPurpleAccent),
-                          onPressed: _sendMessage,
-                        ),
-                      ],
-                    ),
+                    onPressed: () => setState(() => isHost = true),
+                    child: Text('صاحب الغرفة (Host)', style: TextStyle(color: isHost ? Colors.white : Colors.white60, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                const SizedBox(width: 10),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      isMuted = !isMuted;
-                    });
-                  },
-                  icon: CircleAvatar(
-                    backgroundColor: isMuted ? Colors.redAccent.withOpacity(0.2) : Colors.white.withOpacity(0.08),
-                    child: Icon(
-                      isMuted ? Icons.mic_off : Icons.mic,
-                      color: isMuted ? Colors.redAccent : Colors.white,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: !isHost ? Colors.deepPurpleAccent : const Color(0xFF1E1B38),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: _showGiftSheet,
-                  icon: const CircleAvatar(
-                    backgroundColor: Colors.amber,
-                    child: Icon(Icons.card_giftcard, color: Colors.black87),
+                    onPressed: () => setState(() => isHost = false),
+                    child: Text('ضيف / مستمع', style: TextStyle(color: !isHost ? Colors.white : Colors.white60, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 36),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurpleAccent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: () {
+                  if (_roomIdController.text.trim().isEmpty || _userNameController.text.trim().isEmpty) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LiveAudioRoomPage(
+                        roomID: _roomIdController.text.trim(),
+                        isHost: isHost,
+                        userId: userId,
+                        userName: _userNameController.text.trim(),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('دخول الغرفة الآن 🎙️', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LiveAudioRoomPage extends StatelessWidget {
+  final String roomID;
+  final bool isHost;
+  final String userId;
+  final String userName;
+
+  const LiveAudioRoomPage({
+    super.key,
+    required this.roomID,
+    required this.isHost,
+    required this.userId,
+    required this.userName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ZegoUIKitPrebuiltLiveAudioRoom(
+        appID: 519145504,
+        appSign: '4492c846daf92639ffdf76e508d550396adb95793a662ce6ee32f8249f96a38b',
+        userID: userId,
+        userName: userName,
+        roomID: roomID,
+        config: (isHost
+            ? ZegoUIKitPrebuiltLiveAudioRoomConfig.host()
+            : ZegoUIKitPrebuiltLiveAudioRoomConfig.audience()),
       ),
     );
   }
