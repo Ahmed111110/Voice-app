@@ -129,7 +129,7 @@ class _LiveAudioRoomScreenState extends State<LiveAudioRoomScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: GridView.builder(
               shrinkWrap: true,
-              physics: const NeverScrollableScrollButton(),
+              physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 4,
                 mainAxisSpacing: 16,
